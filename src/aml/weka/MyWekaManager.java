@@ -57,6 +57,24 @@ public final class MyWekaManager {
             Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    
+    
+    /**
+     * Constructor with file that contains dataset
+     *
+     * @param dataset File with instances to analyze
+     */
+    public MyWekaManager(File dataset,int old) {
+        try {
+            this.runs = 5;
+            this.folds = 10;
+            this.classIndex = 0;
+            loadInstances(dataset);
+            createFileOld();
+        } catch (Exception ex) {
+            Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
 
     /**
      * Load the instances of dataset
@@ -127,6 +145,18 @@ public final class MyWekaManager {
         FileWriter fwr = new FileWriter(filer.getAbsoluteFile(), true);
         bwr = new BufferedWriter(fwr);
     }
+    
+    /**
+     * Create the file to write te results from WEKA
+     *
+     * @throws IOException
+     */
+    private void createFileOld() throws IOException {
+        /*Create the results file*/
+        File filer = new File("." + File.separator + "dbfiles" + File.separator + "WEKA_RESULTS_OLD.CSV");
+        FileWriter fwr = new FileWriter(filer.getAbsoluteFile(), true);
+        bwr = new BufferedWriter(fwr);
+    }
 
      /**
      * Calculate the f-Measure results from building models with
@@ -144,7 +174,7 @@ public final class MyWekaManager {
             double _knn = crossValidation(new IBk(), new String[]{"-K", "3"},"IBK").getValue();
             System.out.println("- Start algorithm Random Forest -");
             double _rf = crossValidation(new RandomForest(),new String[]{"-I", "100", "-K", "0", "-S", "1"},"RF").getValue();
-            writeResult(new Result(paramName, paramValue, _dt, _svm, _knn, _rf));
+            writeResultOld(new Result(paramName, paramValue, _dt, _svm, _knn, _rf));
         } catch (Exception ex) {
             Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -247,6 +277,25 @@ public final class MyWekaManager {
         }
     }
 
+    /**
+     * Write result instance to file
+     *
+     * @param r
+     */
+    private void writeResultOld(Result r) {
+        if (bwr != null) {
+            try {
+                bwr.append(String.format(ROW_RESULT_FILE, r.getParamName(), r.getParamValue(), r.getDecisiontree(), r.getSvm(), r.getKnn(), r.getRandomForest()));
+                bwr.close();
+            } catch (IOException ex) {
+                Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
+            } finally {
+                instances.clear();
+            }
+        }
+    }
+    
+    
     /**
      * Get index of fraud class attribute (HONEST = 'NO')
      *

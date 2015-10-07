@@ -49,7 +49,7 @@ public class Test {
         long start = System.currentTimeMillis();
         for (File f : folder){
             if (f.getName().contains("SYNTHETIC")) {
-            MyWekaManager m = new MyWekaManager(f);
+            MyWekaManager m = new MyWekaManager(f,1);
             m.calculateResultsOld(paramName, paramValue);
             paramValue = paramValue + 0.05;
             }
