@@ -18,11 +18,16 @@ public class Test {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        // TODO code application logic here        
+        
+        
+               
+    }
+    
+    
+    public static void newTest(){     
         double paramValue = 0.5;
         String paramName = "P1";
         File[] folder = new File("." + File.separator + "dbfiles" + File.separator).listFiles();
-        
         long start = System.currentTimeMillis();
         for (File f : folder){
             if (f.getName().contains("SYNTHETIC")) {
@@ -32,7 +37,23 @@ public class Test {
             }
         }
         long end = System.currentTimeMillis();
-        System.out.println(" - time elapsed (msec): " + (end - start));       
+        System.out.println(" - time elapsed (msec): " + (end - start));
     }
     
+    
+    public static void oldTest(){     
+        double paramValue = 0.5;
+        String paramName = "P1";
+        File[] folder = new File("." + File.separator + "dbfiles" + File.separator).listFiles();
+        long start = System.currentTimeMillis();
+        for (File f : folder){
+            if (f.getName().contains("SYNTHETIC")) {
+            MyWekaManager m = new MyWekaManager(f);
+            m.calculateResultsOld(paramName, paramValue);
+            paramValue = paramValue + 0.05;
+            }
+        }
+        long end = System.currentTimeMillis();
+        System.out.println(" - time elapsed (msec): " + (end - start));
+    }
 }

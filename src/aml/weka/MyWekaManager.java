@@ -8,14 +8,14 @@ package aml.weka;
 import aml.entity.Result;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter; 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.FutureTask;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import weka.classifiers.AbstractClassifier;
@@ -128,6 +128,29 @@ public final class MyWekaManager {
         bwr = new BufferedWriter(fwr);
     }
 
+     /**
+     * Calculate the f-Measure results from building models with
+     * J48 - SMO - IBK algorithms 
+     * @param paramName
+     * @param paramValue 
+     */
+    public void calculateResultsOld(String paramName, double paramValue) {
+        try {
+            System.out.println("- Start algorithm J48");
+            double _dt = crossValidation(new J48(), null,"J48").getValue();
+            System.out.println("- Start algorithm SMO");
+            double _svm = crossValidation(new SMO(), null,"SMO").getValue(); 
+            System.out.println("- Start algorithm KNN");
+            double _knn = crossValidation(new IBk(), new String[]{"-K", "3"},"IBK").getValue();
+            System.out.println("- Start algorithm Random Forest -");
+            double _rf = crossValidation(new RandomForest(),new String[]{"-I", "100", "-K", "0", "-S", "1"},"RF").getValue();
+            writeResult(new Result(paramName, paramValue, _dt, _svm, _knn, _rf));
+        } catch (Exception ex) {
+            Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    
     /**
      * Calculate the f-Measure results from building models with J48 - SMO - IBK
      * algorithms
@@ -139,55 +162,51 @@ public final class MyWekaManager {
         try {
             int threadNum = 4;
             ExecutorService executor = Executors.newFixedThreadPool(threadNum);
-            List<FutureTask<MyWekaResult>> taskList = new ArrayList<FutureTask<MyWekaResult>>();
+            List<Callable<MyWekaResult>> taskList = new ArrayList<Callable<MyWekaResult>>();
             Result res = new Result();
             res.setParamName(paramName);
             res.setParamValue(paramValue);
 
             // Start thread for the first
-            FutureTask<MyWekaResult> futureTask_1 = new FutureTask<MyWekaResult>(new Callable<MyWekaResult>() {
+            taskList.add(new Callable<MyWekaResult>() {
                 @Override
                 public MyWekaResult call() {
                     return crossValidation(new J48(), null, "J48");
                 }
             });
-            taskList.add(futureTask_1);
-            executor.execute(futureTask_1);
+            //executor.execute(futureTask_1);
 
-            // Start thread for the second
-            FutureTask<MyWekaResult> futureTask_2 = new FutureTask<MyWekaResult>(new Callable<MyWekaResult>() {
+            // Start thread for the second            
+            taskList.add(new Callable<MyWekaResult>() {
                 @Override
                 public MyWekaResult call() {
                     return crossValidation(new SMO(), null, "SMO");
                 }
             });
-            taskList.add(futureTask_2);
-            executor.execute(futureTask_2);
+            //executor.execute(futureTask_2);
 
-            // Start thread for the third
-            FutureTask<MyWekaResult> futureTask_3 = new FutureTask<MyWekaResult>(new Callable<MyWekaResult>() {
+            // Start thread for the third            
+            taskList.add(new Callable<MyWekaResult>() {
                 @Override
                 public MyWekaResult call() {
                     return crossValidation(new IBk(), new String[]{"-K", "3"}, "IBK");
                 }
             });
-            taskList.add(futureTask_3);
-            executor.execute(futureTask_3);
+            //executor.execute(futureTask_3);
 
-            // Start thread for the fourth
-            FutureTask<MyWekaResult> futureTask_4 = new FutureTask<MyWekaResult>(new Callable<MyWekaResult>() {
+            // Start thread for the fourth            
+            taskList.add(new Callable<MyWekaResult>() {
                 @Override
                 public MyWekaResult call() {
                     return crossValidation(new RandomForest(), new String[]{"-I", "100", "-K", "0", "-S", "1"}, "RF");
                 }
             });
-            taskList.add(futureTask_4);
-            executor.execute(futureTask_4);
+            //executor.execute(futureTask_4);
+            List<Future<MyWekaResult>> futures = executor.invokeAll(taskList);
 
             // Wait until all results are available and combine them at the same time
-            for (int j = 0; j < threadNum; j++) {
-                FutureTask<MyWekaResult> futureTask = taskList.get(j);
-                MyWekaResult m = futureTask.get();
+            for (Future<MyWekaResult> future : futures) {
+                MyWekaResult m = future.get();
                 switch (m.getName()) {
                     case "J48":
                         res.setDecisiontree(m.getValue());
@@ -209,7 +228,7 @@ public final class MyWekaManager {
             Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+
     /**
      * Write result instance to file
      *
