@@ -34,7 +34,6 @@ import weka.core.converters.CSVLoader;
  */
 public final class MyWekaManager {
 
-    private Instances instances;
     private int classIndex;
     private int runs;
     private int folds;
@@ -46,56 +45,31 @@ public final class MyWekaManager {
      *
      * @param dataset File with instances to analyze
      */
-    public MyWekaManager(File dataset) {
+    public MyWekaManager() {
         try {
             this.runs = 5;
             this.folds = 10;
             this.classIndex = 0;
-            loadInstances(dataset);
             createFile();
-        } catch (Exception ex) {
-            Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-    
-    
-    /**
-     * Constructor with file that contains dataset
-     *
-     * @param dataset File with instances to analyze
-     */
-    public MyWekaManager(File dataset,int old) {
-        try {
-            this.runs = 5;
-            this.folds = 10;
-            this.classIndex = 0;
-            loadInstances(dataset);
-            createFileOld();
         } catch (Exception ex) {
             Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
     /**
-     * Load the instances of dataset
+     * Constructor with file that contains dataset
      *
-     * @param dataset File contains data
-     * @throws Exception
+     * @param dataset File with instances to analyze
      */
-    public void loadInstances(File dataset) throws Exception {
-        CSVLoader loader = new CSVLoader();
-        loader.setSource(dataset);
-        /**
-         * Load dataset in instances variable
-         */
-        instances = loader.getDataSet();
-        /**
-         * Delete the first attribute of dataset it's the transaction id
-         * attribute
-         */
-        instances.deleteAttributeAt(0);
-        instances.setClassIndex(instances.numAttributes() - 1);
-        classIndex = getClassNOIndex();
+    public MyWekaManager(int old) {
+        try {
+            this.runs = 5;
+            this.folds = 10;
+            this.classIndex = 0;
+            createFileOld();
+        } catch (Exception ex) {
+            Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     /**
@@ -106,32 +80,50 @@ public final class MyWekaManager {
      * @param options for the cassifier
      * @return double fMeasure value
      */
-    public MyWekaResult crossValidation(AbstractClassifier classifier, String[] options, String name) {
-        double _fMeasure = 0;
-        if (options != null) {
-            try {
-                classifier.setOptions(options);
-            } catch (Exception ex) {
-                Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        for (int run = 0; run < runs; run++) {
-            instances.stratify(folds);
-            for (int fold = 0; fold < folds; fold++) {
+    public MyWekaResult crossValidation(File dataset, AbstractClassifier classifier, String[] options, String name) {
+        try {
+            CSVLoader loader = new CSVLoader();
+            loader.setSource(dataset);
+            /**
+             * Load dataset in instances variable
+             */
+            Instances instances = loader.getDataSet();
+            /**
+             * Delete the first attribute of dataset it's the transaction id
+             * attribute
+             */
+            instances.deleteAttributeAt(0);
+            instances.setClassIndex(instances.numAttributes() - 1);
+            classIndex = getClassNOIndex(instances);
+            double _fMeasure = 0;
+            if (options != null) {
                 try {
-                    System.out.println("-" + name + "- run: " + run + " fold: " + fold);
-                    Instances _train = instances.trainCV(folds, fold);
-                    Instances _test = instances.testCV(folds, fold);
-                    classifier.buildClassifier(_train);
-                    Evaluation _evaluation = new Evaluation(_train);
-                    _evaluation.evaluateModel(classifier, _test);
-                    _fMeasure += _evaluation.fMeasure(classIndex);
+                    classifier.setOptions(options);
                 } catch (Exception ex) {
                     Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
+            for (int run = 0; run < runs; run++) {
+                instances.stratify(folds);
+                for (int fold = 0; fold < folds; fold++) {
+                    try {
+                        System.out.println("-" + name + "- run: " + run + " fold: " + fold);
+                        Instances _train = instances.trainCV(folds, fold);
+                        Instances _test = instances.testCV(folds, fold);
+                        classifier.buildClassifier(_train);
+                        Evaluation _evaluation = new Evaluation(_train);
+                        _evaluation.evaluateModel(classifier, _test);
+                        _fMeasure += _evaluation.fMeasure(classIndex);
+                    } catch (Exception ex) {
+                        Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+            }
+            return new MyWekaResult(name, _fMeasure / (runs * folds));
+        } catch (IOException ex) {
+            Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
         }
-        return new MyWekaResult(name, _fMeasure / (runs * folds));
+        return null;
     }
 
     /**
@@ -145,7 +137,7 @@ public final class MyWekaManager {
         FileWriter fwr = new FileWriter(filer.getAbsoluteFile(), true);
         bwr = new BufferedWriter(fwr);
     }
-    
+
     /**
      * Create the file to write te results from WEKA
      *
@@ -158,29 +150,6 @@ public final class MyWekaManager {
         bwr = new BufferedWriter(fwr);
     }
 
-     /**
-     * Calculate the f-Measure results from building models with
-     * J48 - SMO - IBK algorithms 
-     * @param paramName
-     * @param paramValue 
-     */
-    public void calculateResultsOld(String paramName, double paramValue) {
-        try {
-            System.out.println("- Start algorithm J48");
-            double _dt = crossValidation(new J48(), null,"J48").getValue();
-            System.out.println("- Start algorithm SMO");
-            double _svm = crossValidation(new SMO(), null,"SMO").getValue(); 
-            System.out.println("- Start algorithm KNN");
-            double _knn = crossValidation(new IBk(), new String[]{"-K", "3"},"IBK").getValue();
-            System.out.println("- Start algorithm Random Forest -");
-            double _rf = crossValidation(new RandomForest(),new String[]{"-I", "100", "-K", "0", "-S", "1"},"RF").getValue();
-            writeResultOld(new Result(paramName, paramValue, _dt, _svm, _knn, _rf));
-        } catch (Exception ex) {
-            Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-    
-    
     /**
      * Calculate the f-Measure results from building models with J48 - SMO - IBK
      * algorithms
@@ -188,7 +157,30 @@ public final class MyWekaManager {
      * @param paramName
      * @param paramValue
      */
-    public void calculateResults(String paramName, double paramValue) {
+    public void calculateResultsOld(File dataset, String paramName, double paramValue) {
+        try {
+            System.out.println("- Start algorithm J48");
+            double _dt = crossValidation(dataset, new J48(), null, "J48").getValue();
+            System.out.println("- Start algorithm SMO");
+            double _svm = crossValidation(dataset, new SMO(), null, "SMO").getValue();
+            System.out.println("- Start algorithm KNN");
+            double _knn = crossValidation(dataset, new IBk(), new String[]{"-K", "3"}, "IBK").getValue();
+            System.out.println("- Start algorithm Random Forest -");
+            double _rf = crossValidation(dataset, new RandomForest(), new String[]{"-I", "100", "-K", "0", "-S", "1"}, "RF").getValue();
+            writeResultOld(new Result(paramName, paramValue, _dt, _svm, _knn, _rf));
+        } catch (Exception ex) {
+            Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    /**
+     * Calculate the f-Measure results from building models with J48 - SMO - IBK
+     * algorithms
+     *
+     * @param paramName
+     * @param paramValue
+     */
+    public void calculateResults(final File dataset, String paramName, double paramValue) {
         try {
             int threadNum = 4;
             ExecutorService executor = Executors.newFixedThreadPool(threadNum);
@@ -201,7 +193,7 @@ public final class MyWekaManager {
             taskList.add(new Callable<MyWekaResult>() {
                 @Override
                 public MyWekaResult call() {
-                    return crossValidation(new J48(), null, "J48");
+                    return crossValidation(dataset, new J48(), null, "J48");
                 }
             });
             //executor.execute(futureTask_1);
@@ -210,7 +202,7 @@ public final class MyWekaManager {
             taskList.add(new Callable<MyWekaResult>() {
                 @Override
                 public MyWekaResult call() {
-                    return crossValidation(new SMO(), null, "SMO");
+                    return crossValidation(dataset, new SMO(), null, "SMO");
                 }
             });
             //executor.execute(futureTask_2);
@@ -219,7 +211,7 @@ public final class MyWekaManager {
             taskList.add(new Callable<MyWekaResult>() {
                 @Override
                 public MyWekaResult call() {
-                    return crossValidation(new IBk(), new String[]{"-K", "3"}, "IBK");
+                    return crossValidation(dataset, new IBk(), new String[]{"-K", "3"}, "IBK");
                 }
             });
             //executor.execute(futureTask_3);
@@ -228,7 +220,7 @@ public final class MyWekaManager {
             taskList.add(new Callable<MyWekaResult>() {
                 @Override
                 public MyWekaResult call() {
-                    return crossValidation(new RandomForest(), new String[]{"-I", "100", "-K", "0", "-S", "1"}, "RF");
+                    return crossValidation(dataset, new RandomForest(), new String[]{"-I", "100", "-K", "0", "-S", "1"}, "RF");
                 }
             });
             //executor.execute(futureTask_4);
@@ -271,8 +263,6 @@ public final class MyWekaManager {
                 bwr.close();
             } catch (IOException ex) {
                 Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
-            } finally {
-                instances.clear();
             }
         }
     }
@@ -289,19 +279,16 @@ public final class MyWekaManager {
                 bwr.close();
             } catch (IOException ex) {
                 Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
-            } finally {
-                instances.clear();
             }
         }
     }
-    
-    
+
     /**
      * Get index of fraud class attribute (HONEST = 'NO')
      *
      * @return index of Fraud Class
      */
-    private int getClassNOIndex() {
+    private int getClassNOIndex(Instances instances) {
         int _ret = 0;
         for (int i = 0; i < instances.numClasses(); i++) {
             if (instances.classAttribute().value(i).trim().equals("NO")) {

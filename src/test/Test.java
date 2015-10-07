@@ -32,8 +32,8 @@ public class Test {
         long start = System.currentTimeMillis();
         for (File f : folder){
             if (f.getName().contains("SYNTHETIC")) {
-            MyWekaManager m = new MyWekaManager(f);
-            m.calculateResults(paramName, paramValue);
+            MyWekaManager m = new MyWekaManager();
+            m.calculateResults(f,paramName, paramValue);
             paramValue = paramValue + 0.05;
             }
         }
@@ -49,8 +49,8 @@ public class Test {
         long start = System.currentTimeMillis();
         for (File f : folder){
             if (f.getName().contains("SYNTHETIC")) {
-            MyWekaManager m = new MyWekaManager(f,1);
-            m.calculateResultsOld(paramName, paramValue);
+            MyWekaManager m = new MyWekaManager(1);
+            m.calculateResultsOld(f,paramName, paramValue);
             paramValue = paramValue + 0.05;
             }
         }
