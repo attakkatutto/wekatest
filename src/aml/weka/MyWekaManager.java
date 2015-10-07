@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -34,22 +35,17 @@ import weka.core.converters.CSVLoader;
  */
 public final class MyWekaManager {
 
-    private int classIndex;
-    private int runs;
-    private int folds;
+    private final int runs = 5;
+    private final int folds = 10;
     private BufferedWriter bwr;
     private final String ROW_RESULT_FILE = " %s, %s, %s, %s, %s, %s \n";
 
     /**
      * Constructor with file that contains dataset
      *
-     * @param dataset File with instances to analyze
      */
     public MyWekaManager() {
         try {
-            this.runs = 5;
-            this.folds = 10;
-            this.classIndex = 0;
             createFile();
         } catch (Exception ex) {
             Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
@@ -59,13 +55,10 @@ public final class MyWekaManager {
     /**
      * Constructor with file that contains dataset
      *
-     * @param dataset File with instances to analyze
+     * @param old parameter for old version of application
      */
     public MyWekaManager(int old) {
         try {
-            this.runs = 5;
-            this.folds = 10;
-            this.classIndex = 0;
             createFileOld();
         } catch (Exception ex) {
             Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
@@ -76,8 +69,10 @@ public final class MyWekaManager {
      * WEKA cross validation classifier method that calculate the f-Measure of
      * the model
      *
+     * @param dataset
      * @param classifier Abstract classifier that build model
      * @param options for the cassifier
+     * @param name classifier name
      * @return double fMeasure value
      */
     public MyWekaResult crossValidation(File dataset, AbstractClassifier classifier, String[] options, String name) {
@@ -94,7 +89,7 @@ public final class MyWekaManager {
              */
             instances.deleteAttributeAt(0);
             instances.setClassIndex(instances.numAttributes() - 1);
-            classIndex = getClassNOIndex(instances);
+            int classIndex = getClassNOIndex(instances);
             double _fMeasure = 0;
             if (options != null) {
                 try {
@@ -154,6 +149,7 @@ public final class MyWekaManager {
      * Calculate the f-Measure results from building models with J48 - SMO - IBK
      * algorithms
      *
+     * @param dataset
      * @param paramName
      * @param paramValue
      */
@@ -177,6 +173,7 @@ public final class MyWekaManager {
      * Calculate the f-Measure results from building models with J48 - SMO - IBK
      * algorithms
      *
+     * @param dataset
      * @param paramName
      * @param paramValue
      */
@@ -184,7 +181,7 @@ public final class MyWekaManager {
         try {
             int threadNum = 4;
             ExecutorService executor = Executors.newFixedThreadPool(threadNum);
-            List<Callable<MyWekaResult>> taskList = new ArrayList<Callable<MyWekaResult>>();
+            List<Callable<MyWekaResult>> taskList = new ArrayList<>();
             Result res = new Result();
             res.setParamName(paramName);
             res.setParamValue(paramValue);
@@ -246,7 +243,7 @@ public final class MyWekaManager {
             }
             writeResult(res);
             executor.shutdown();
-        } catch (Exception ex) {
+        } catch (InterruptedException | ExecutionException ex) {
             Logger.getLogger(MyWekaManager.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
