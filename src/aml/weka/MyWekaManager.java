@@ -179,7 +179,7 @@ public final class MyWekaManager {
      */
     public void calculateResults(final File dataset, String paramName, double paramValue) {
         try {
-            int threadNum = 4;
+            int threadNum = Runtime.getRuntime().availableProcessors();
             ExecutorService executor = Executors.newFixedThreadPool(threadNum);
             List<Callable<MyWekaResult>> taskList = new ArrayList<>();
             Result res = new Result();
